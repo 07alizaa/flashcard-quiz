@@ -1,111 +1,142 @@
 
 const FlashcardQuiz = {
     questions: [],
-    optionLabels: ['A', 'B', 'C', 'D'],
     
     config: {
         messages: {
-            fillAllFields: 'Please fill in all fields!',
-            noQuestions: 'Please add questions first!',
-            confirmClear: 'Are you sure you want to clear all questions?',
-            noQuestionsToDelete: 'No questions to clear!',
+            fetchError: 'Failed to fetch questions. Please try again.',
+            noQuestions: 'No questions available. Please generate a quiz first!',
             correctAnswer: '✓ Correct!',
             wrongAnswer: '✗ Wrong! The correct answer is: '
-        }
+        },
+        apiUrl: 'https://opentdb.com/api.php'
     },
 
     // Utility functions
     $(id) { return document.getElementById(id); },
-    hide(el) { if (el) el.hidden = true; },
-    show(el) { if (el) el.hidden = false; },
-
-    // Generate option inputs dynamically
-    generateOptions() {
-        const container = this.$('options-container');
-        const select = this.$('correct');
-        
-        // Generate option inputs
-        container.innerHTML = this.optionLabels.map((label, i) => `
-            <div class="form-group">
-                <label class="form-label">Option ${label}</label>
-                <input id="opt${i + 1}" placeholder="Option ${label}" required class="form-input">
-            </div>
-        `).join('');
-        
-        // Generate select options
-        select.innerHTML = `
-            <option value="">Select correct answer</option>
-            ${this.optionLabels.map((label, i) => `<option value="${i}">Option ${label}</option>`).join('')}
-        `;
+    toggle(el, show = true) { if (el) el.hidden = !show; },
+    setText(id, text) { this.$(id).textContent = text; },
+    
+    // Decode HTML entities from API response
+    decodeHtml(html) {
+        const txt = document.createElement('textarea');
+        txt.innerHTML = html;
+        return txt.value;
     },
 
-    // Get and validate form data
-    getFormData() {
-        const question = this.$('question').value.trim();
-        const options = this.optionLabels.map((_, i) => this.$(`opt${i + 1}`).value.trim());
-        const correctIndex = parseInt(this.$('correct').value);
+    // Build API URL with parameters
+    buildApiUrl(params) {
+        const url = new URL(this.config.apiUrl);
+        Object.entries(params).forEach(([key, value]) => {
+            if (value) url.searchParams.append(key, value);
+        });
+        return url.toString();
+    },
+
+    // Get form data for API request
+    getQuizConfig() {
+        const fields = ['amount', 'category', 'difficulty', 'type'];
+        return Object.fromEntries(fields.map(field => [field, this.$(field).value]));
+    },
+
+    // Toggle button loading state
+    toggleButtonLoading(btnId, isLoading) {
+        const btn = this.$(btnId);
+        const text = btn.querySelector('.btn-text');
+        const loading = btn.querySelector('.btn-loading');
+        
+        btn.disabled = isLoading;
+        this.toggle(text, !isLoading);
+        this.toggle(loading, isLoading);
+    },
+
+    // Fetch questions from API
+    async fetchQuestions(config) {
+        const apiUrl = this.buildApiUrl(config);
+        
+        try {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            
+            if (data.response_code !== 0) {
+                throw new Error('API returned no results');
+            }
+            
+            return data.results.map(q => this.formatQuestion(q));
+        } catch (error) {
+            console.error('Fetch error:', error);
+            throw new Error(this.config.messages.fetchError);
+        }
+    },
+
+    // Shuffle array in place
+    shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    },
+
+    // Format API question to our format
+    formatQuestion(apiQuestion) {
+        const question = this.decodeHtml(apiQuestion.question);
+        const correctAnswer = this.decodeHtml(apiQuestion.correct_answer);
+        const incorrectAnswers = apiQuestion.incorrect_answers.map(ans => this.decodeHtml(ans));
+        
+        // Prepare options based on type
+        const options = apiQuestion.type === 'boolean' 
+            ? ['True', 'False']
+            : this.shuffle([...incorrectAnswers, correctAnswer]);
         
         return {
+            id: Date.now() + Math.random(),
             question,
             options,
-            correctIndex,
-            correctAnswer: options[correctIndex],
-            isValid: question && options.every(opt => opt) && !isNaN(correctIndex)
+            correctAnswer,
+            correctIndex: options.indexOf(correctAnswer),
+            category: this.decodeHtml(apiQuestion.category),
+            difficulty: apiQuestion.difficulty
         };
     },
 
-    // Add question
-    addQuestion(event) {
+    // Generate quiz from API
+    async generateQuiz(event) {
         event.preventDefault();
-        const formData = this.getFormData();
+        this.toggleButtonLoading('generate-btn', true);
         
-        if (!formData.isValid) {
-            alert(this.config.messages.fillAllFields);
-            return;
-        }
-        
-        this.questions.push({
-            id: Date.now(),
-            question: formData.question,
-            options: formData.options,
-            correctAnswer: formData.correctAnswer,
-            correctIndex: formData.correctIndex
-        });
-        
-        this.updateUI();
-        this.$('form').reset();
-        this.show(this.$('start'));
-    },
-
-    // Delete question
-    deleteQuestion(index) {
-        this.questions.splice(index, 1);
-        this.updateUI();
-        if (this.questions.length === 0) this.hide(this.$('start'));
-    },
-
-    // Clear all questions
-    clearAll() {
-        if (this.questions.length === 0) {
-            alert(this.config.messages.noQuestionsToDelete);
-            return;
-        }
-        
-        if (confirm(this.config.messages.confirmClear)) {
-            this.questions = [];
+        try {
+            const config = this.getQuizConfig();
+            this.questions = await this.fetchQuestions(config);
             this.updateUI();
-            this.hide(this.$('start'));
+            this.toggle(this.$('preview'), true);
+            this.toggle(this.$('start'), true);
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            this.toggleButtonLoading('generate-btn', false);
         }
+    },
+
+    // Create question metadata HTML
+    createQuestionMeta(q, index) {
+        return `
+            <div class="question-meta">
+                <span class="question-number">Q${index + 1}</span>
+                <span class="question-category">${q.category}</span>
+                <span class="question-difficulty">${q.difficulty}</span>
+            </div>
+        `;
     },
 
     // Update question preview
     updateUI() {
-        this.$('count').textContent = this.questions.length;
+        this.setText('count', this.questions.length);
         this.$('list').innerHTML = this.questions.map((q, i) => `
             <div class="question-item">
-                <div class="question-text"><strong>Question ${i + 1}:</strong> ${q.question}</div>
+                ${this.createQuestionMeta(q, i)}
+                <div class="question-text">${q.question}</div>
                 <div class="question-options">${q.options.join(' • ')} → <strong>${q.correctAnswer}</strong></div>
-                <button onclick="FlashcardQuiz.deleteQuestion(${i})" class="delete-btn">×</button>
             </div>
         `).join('');
     },
@@ -117,37 +148,51 @@ const FlashcardQuiz = {
             return;
         }
         
-        this.hide(this.$('creator'));
-        this.show(this.$('quiz'));
+        this.toggle(this.$('creator'), false);
+        this.toggle(this.$('quiz'), true);
         this.renderQuiz();
     },
 
     // Return to creator
     returnToCreator() {
-        this.show(this.$('creator'));
-        this.hide(this.$('quiz'));
+        this.toggle(this.$('creator'), true);
+        this.toggle(this.$('quiz'), false);
+    },
+
+    // Create quiz controls HTML
+    createQuizControls() {
+        return `
+            <div class="quiz-controls">
+                <button class="btn btn-primary" onclick="FlashcardQuiz.returnToCreator()">Back to Generator</button>
+                <button class="btn btn-success" onclick="FlashcardQuiz.startQuiz()">Restart Quiz</button>
+            </div>
+        `;
+    },
+
+    // Create quiz card HTML
+    createQuizCard(q, index) {
+        return `
+            <div class="quiz-card">
+                <div class="quiz-meta">
+                    <span class="quiz-category">${q.category}</span>
+                    <span class="quiz-difficulty">${q.difficulty}</span>
+                </div>
+                <h3 class="quiz-question">Question ${index + 1}</h3>
+                <p class="quiz-question-text">${q.question}</p>
+                <div class="quiz-options">
+                    ${q.options.map(opt => `
+                        <button class="quiz-option" onclick="FlashcardQuiz.handleAnswer(this, '${q.correctAnswer}')">${opt}</button>
+                    `).join('')}
+                </div>
+                <div class="quiz-feedback" hidden></div>
+            </div>
+        `;
     },
 
     // Render quiz interface
     renderQuiz() {
-        this.$('quiz').innerHTML = `
-            <div class="quiz-controls">
-                <button class="btn btn-primary" onclick="FlashcardQuiz.returnToCreator()">Back to Creator</button>
-                <button class="btn btn-success" onclick="FlashcardQuiz.startQuiz()">Restart Quiz</button>
-            </div>
-            ${this.questions.map((q, i) => `
-                <div class="quiz-card">
-                    <h3 class="quiz-question">Question ${i + 1}</h3>
-                    <p class="quiz-question-text">${q.question}</p>
-                    <div class="quiz-options">
-                        ${q.options.map(opt => `
-                            <button class="quiz-option" onclick="FlashcardQuiz.handleAnswer(this, '${q.correctAnswer}')">${opt}</button>
-                        `).join('')}
-                    </div>
-                    <div class="quiz-feedback" hidden></div>
-                </div>
-            `).join('')}
-        `;
+        this.$('quiz').innerHTML = this.createQuizControls() + 
+            this.questions.map((q, i) => this.createQuizCard(q, i)).join('');
     },
 
     // Handle answer selection
@@ -172,17 +217,14 @@ const FlashcardQuiz = {
             this.config.messages.correctAnswer : 
             `${this.config.messages.wrongAnswer}${correctAnswer}`;
         
-        this.show(feedback);
+        this.toggle(feedback, true);
     },
 
     // Initialize application
     init() {
         document.addEventListener('DOMContentLoaded', () => {
-            this.generateOptions(); // Generate form options dynamically
-            this.$('form').addEventListener('submit', (e) => this.addQuestion(e));
+            this.$('quiz-config').addEventListener('submit', (e) => this.generateQuiz(e));
             this.$('start').addEventListener('click', () => this.startQuiz());
-            this.$('clear').addEventListener('click', () => this.clearAll());
-            this.updateUI();
         });
     }
 };
