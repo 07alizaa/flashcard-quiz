@@ -72,7 +72,9 @@ body {
   font-weight: 500;
 }
 
-.question-form { padding: 1.5rem; }
+.quiz-config-form { 
+  padding: 1.5rem; 
+}
 .form-group { margin-bottom: 1rem; }
 
 .form-label {
@@ -99,19 +101,6 @@ body {
 }
 
 .form-textarea { min-height: 100px; resize: vertical; }
-
-.options-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-@media (max-width: 640px) {
-  .options-grid { grid-template-columns: 1fr; }
-}
-
-.options-grid .form-input { background: var(--primary-light); }
 
 .btn {
   display: inline-flex;
@@ -159,6 +148,31 @@ body {
   transform: translateY(-1px);
 }
 
+.btn-primary:disabled {
+  background: var(--gray-200);
+  color: var(--gray-600);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.form-row {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 640px) {
+  .form-row { grid-template-columns: 1fr 1fr; }
+}
+
 .form-actions {
   display: flex;
   gap: 0.75rem;
@@ -177,23 +191,13 @@ body {
   overflow-y: auto;
 }
 
-.questions-list:empty::after {
-  content: "No questions added yet.\A✨ Create your first question to get started!";
-  white-space: pre-line;
-  display: block;
-  text-align: center;
-  color: var(--gray-600);
-  font-style: italic;
-  padding: 2rem;
-}
-
+/* Enhanced question items */
 .question-item {
-  background: var(--gray-50);
+  padding: 1rem;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius);
-  padding: 1rem;
   margin-bottom: 0.75rem;
-  position: relative;
+  background: var(--white);
   transition: var(--transition);
 }
 
@@ -207,35 +211,12 @@ body {
 .question-text {
   font-weight: 500;
   margin-bottom: 0.5rem;
-  padding-right: 2rem;
+  line-height: 1.5;
 }
 
 .question-options {
   font-size: 0.875rem;
   color: var(--gray-600);
-}
-
-.delete-btn {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  background: var(--white);
-  color: var(--error);
-  border: 1px solid var(--gray-200);
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.delete-btn:hover {
-  background: var(--error);
-  color: var(--white);
-  transform: scale(1.1);
 }
 
 .quiz-controls {
@@ -401,19 +382,4 @@ body {
 .question-difficulty[data-difficulty="easy"] { background: #d1fae5; color: #065f46; }
 .question-difficulty[data-difficulty="medium"] { background: #fef3c7; color: #92400e; }
 .question-difficulty[data-difficulty="hard"] { background: #fee2e2; color: #991b1b; }
-
-/* Enhanced question items */
-.question-item {
-  padding: 1rem;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius);
-  margin-bottom: 0.75rem;
-  background: var(--white);
-}
-
-.question-text {
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-  line-height: 1.5;
-}
 
