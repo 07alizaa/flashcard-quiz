@@ -1,14 +1,27 @@
-# Flashcard Quiz 📝
-Simple flashcard quiz app built with vanilla HTML, CSS, and JavaScript.
+# Flashcard Quiz
+A trivia quiz app that fetches questions from an API.
 
 ## Features
-- Create custom quiz questions with multiple choice answers
-- Interactive quiz interface with instant feedback
-- Clean, responsive design with modern UI
-- Minimal codebase following DRY principles
+- Fetches trivia questions from Open Trivia Database API
+- Multiple categories (Science, History, Entertainment, etc.)
+- Different difficulty levels (Easy, Medium, Hard)
+- Customizable quiz length (5-20 questions)
+- Responsive design
+
+## Technologies
+- HTML, CSS, JavaScript
+- Fetch API for data retrieval
+- Async/await for API calls
 
 ## Usage
-Open `index.html` in your browser. That's it!
+1. Open `index.html` in your browser
+2. Select category, difficulty, and number of questions
+3. Click "Generate Quiz" 
+4. Take the quiz
 
----
-*Clean code example for learning vanilla JavaScript*
+## Skills Demonstrated
+- API integration
+- Asynchronous JavaScript
+- DOM manipulation
+- Error handling
+- Clean code practices
