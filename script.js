@@ -1,5 +1,10 @@
 const FlashcardQuiz = {
     questions: [],
+    score: 0,
+
+    // Track answered questions
+    answeredCount: 0,
+    answers: [],
     
     config: {
         messages: {
@@ -114,21 +119,26 @@ const FlashcardQuiz = {
 
     // Generate quiz from API
     async generateQuiz(event) {
-        event.preventDefault();
-        this.toggleButtonLoading('generate-btn', true);
-        try {
-            const config = this.getQuizConfig();
-            this.questions = await this.fetchQuestions(config);
-            this.saveToLocal(); // Save after fetching
-            this.updateUI();
-            this.toggle(this.$('preview'), true);
-            this.toggle(this.$('start'), true);
-        } catch (error) {
-            alert(error.message);
-        } finally {
-            this.toggleButtonLoading('generate-btn', false);
-        }
+    event.preventDefault(); // This is needed
+    this.toggleButtonLoading('generate-btn', true);
+    try {
+        const config = this.getQuizConfig();
+        console.log('Quiz Config:', config); //Debug
+        const fetched = await this.fetchQuestions(config);
+        console.log('Fetched Questions:', fetched); // Debug
+
+        this.questions = fetched;
+        this.saveToLocal();
+        this.updateUI();
+        this.toggle(this.$('preview'), true);
+        this.toggle(this.$('start'), true);
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        this.toggleButtonLoading('generate-btn', false);
+    }
     },
+
 
     // Create question metadata HTML
     createQuestionMeta(q, index) {
@@ -203,6 +213,9 @@ const FlashcardQuiz = {
 
     // Render quiz interface
     renderQuiz() {
+        this.answeredCount = 0;
+        this.score = 0;
+        this.answers = [];
         this.$('quiz').innerHTML = this.createQuizControls() + 
             this.questions.map((q, i) => this.createQuizCard(q, i)).join('');
     },
@@ -212,42 +225,61 @@ const FlashcardQuiz = {
         const card = button.closest('.quiz-card');
         const options = card.querySelectorAll('.quiz-option');
         const feedback = card.querySelector('.quiz-feedback');
-        
+        const questionIndex = Array.from(card.parentNode.children).indexOf(card) - 1;
         options.forEach(opt => opt.disabled = true);
-        
         const isCorrect = button.textContent === correctAnswer;
         button.classList.add(isCorrect ? 'correct' : 'wrong');
-        
-        if (!isCorrect) {
-            options.forEach(opt => {
-                if (opt.textContent === correctAnswer) opt.classList.add('correct');
-            });
-        }
-        
+        if (isCorrect) this.score += 1;
+        this.answers[questionIndex] = isCorrect;
         feedback.className = `quiz-feedback ${isCorrect ? 'correct' : 'wrong'}`;
         feedback.textContent = isCorrect ? 
             this.config.messages.correctAnswer : 
             `${this.config.messages.wrongAnswer}${correctAnswer}`;
-        
         this.toggle(feedback, true);
+        this.answeredCount += 1;
+        if (this.answeredCount === this.questions.length) {
+            setTimeout(() => this.showScoreSummary(), 600);
+        }
     },
 
-    // Initialize application
-    init() {
-        document.addEventListener('DOMContentLoaded', () => {
-            this.loadFromLocal(); // Load saved questions
-            this.$('quiz-config').addEventListener('submit', (e) => this.generateQuiz(e));
-            this.$('start').addEventListener('click', () => this.startQuiz());
-            this.updateUI();
-            if (this.questions.length) {
-                this.toggle(this.$('preview'), true);
-                this.toggle(this.$('start'), true);
-            }
-        });
-    }
+    // Show score summary at the end of the quiz
+  showScoreSummary() {
+  const correctAnswers = this.answers.filter(ans => ans).length;
+  const performance = this.getPerformanceMessage(correctAnswers);
+
+  this.$('quiz').innerHTML = `
+    <div class="score-summary">
+      <h2>Your Score: ${correctAnswers} / ${this.questions.length}</h2>
+      <p>${performance}</p>
+      <button class="btn btn-primary" onclick="FlashcardQuiz.returnToCreator()">Back to Generator</button>
+    </div>
+  `;
+},
+
+getPerformanceMessage(score) {
+  const percent = (score / this.questions.length) * 100;
+  if (percent === 100) return "Perfect Score! You nailed it!";
+  if (percent >= 80) return "Great job! You're doing well.";
+  if (percent >= 50) return " Good effort. A little more practice!";
+  return " Don’t worry! Keep practicing.";
+}
 };
 
-FlashcardQuiz.init();
+// Initialize quiz on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    FlashcardQuiz.loadFromLocal();
+    FlashcardQuiz.updateUI();
+
+    const form = document.getElementById('quiz-config');
+    if (form) {
+        form.addEventListener('submit', (e) => FlashcardQuiz.generateQuiz(e));
+    }
+    const startBtn = document.getElementById('start');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => FlashcardQuiz.startQuiz());
+    }
+});
+
 
 
 

@@ -1,3 +1,12 @@
+@media (max-width: 600px) {
+  .quiz-card {
+    font-size: 14px;
+    padding: 1rem;
+  }
+  .form-row {
+    flex-direction: column;
+  }
+}
 
 :root {
   --primary: #6366f1;
@@ -382,4 +391,26 @@ body {
 .question-difficulty[data-difficulty="easy"] { background: #d1fae5; color: #065f46; }
 .question-difficulty[data-difficulty="medium"] { background: #fef3c7; color: #92400e; }
 .question-difficulty[data-difficulty="hard"] { background: #fee2e2; color: #991b1b; }
+
+.score-summary {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.score-summary h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.score-summary p {
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.score-summary button {
+  margin-top: 1rem;
+  width: 100%;
+  max-width: 300px;
+}
+
 
