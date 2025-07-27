@@ -1,4 +1,3 @@
-
 const FlashcardQuiz = {
     questions: [],
     
@@ -100,14 +99,27 @@ const FlashcardQuiz = {
         };
     },
 
+    // Save questions to localStorage
+    saveToLocal() {
+        localStorage.setItem('flashcardQuizQuestions', JSON.stringify(this.questions));
+    },
+
+    // Load questions from localStorage
+    loadFromLocal() {
+        const saved = localStorage.getItem('flashcardQuizQuestions');
+        if (saved) {
+            this.questions = JSON.parse(saved);
+        }
+    },
+
     // Generate quiz from API
     async generateQuiz(event) {
         event.preventDefault();
         this.toggleButtonLoading('generate-btn', true);
-        
         try {
             const config = this.getQuizConfig();
             this.questions = await this.fetchQuestions(config);
+            this.saveToLocal(); // Save after fetching
             this.updateUI();
             this.toggle(this.$('preview'), true);
             this.toggle(this.$('start'), true);
@@ -223,8 +235,14 @@ const FlashcardQuiz = {
     // Initialize application
     init() {
         document.addEventListener('DOMContentLoaded', () => {
+            this.loadFromLocal(); // Load saved questions
             this.$('quiz-config').addEventListener('submit', (e) => this.generateQuiz(e));
             this.$('start').addEventListener('click', () => this.startQuiz());
+            this.updateUI();
+            if (this.questions.length) {
+                this.toggle(this.$('preview'), true);
+                this.toggle(this.$('start'), true);
+            }
         });
     }
 };
